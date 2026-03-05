@@ -49,7 +49,7 @@ conda activate adaparse
 git clone git@github.com:7shoe/AdaParse.git
 cd AdaParse
 pip install --upgrade pip setuptools wheel
-pip install -e '.[transformers]' # pull transformers too
+pip install -e '.[gpu-cuda]'
 ```
 If you plan on using [Tesseract](https://github.com/tesseract-ocr/tesseract?tab=readme-ov-file#installing-tesseract), additional installation steps are required.
 
@@ -66,7 +66,10 @@ cd AdaParse
 module load frameworks
 conda activate adaparse
 pip install --upgrade pip setuptools wheel
-pip install -e .
+# Keep the framework-provided torch/xpu stack intact.
+pip install -e . --no-deps
+# Install only non-torch extras needed by Nougat/AdaParse.
+pip install -e '.[nougat-xpu]'
 export PATH="$HOME/.local/aurora/frameworks/2024.2.1_u1/bin:$PATH"
 ```
 

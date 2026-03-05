@@ -24,7 +24,6 @@ classifiers = [
 dependencies = [
     "parsl==2025.3.10",
     #"torch==2.4.1",
-    "torchvision>=0.18.0",
     "pydantic>=2.6.1",
     #"typer[all]>=0.7.0",
     "typer>=0.15", # new
@@ -54,6 +53,25 @@ adaparse = "adaparse.cli:main"
 [project.optional-dependencies]
 torch = [
     "torch==2.4.1",
+]
+vision = [
+    "torchvision>=0.18.0",
+]
+xpu-safe = [
+    "transformers>=4.44.0,<4.56",
+]
+gpu-cuda = [
+    "torch==2.4.1",
+    "transformers>=4.44.0,<4.56",
+    "torchvision>=0.18.0",
+]
+nougat-xpu = [
+    "transformers>=4.44.0,<4.56",
+]
+nougat-cuda = [
+    "torch==2.4.1",
+    "transformers>=4.44.0,<4.56",
+    "torchvision>=0.18.0",
 ]
 ocr = [
     "nougat-ocr==0.1.17",
