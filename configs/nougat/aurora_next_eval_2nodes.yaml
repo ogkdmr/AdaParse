@@ -1,0 +1,35 @@
+# 2-node next-eval scaling smoke test (Nougat-only, zipped input)
+pdf_dir: /lus/flare/projects/LUCID/ogokdemir/zipped_pdfs
+out_dir: /lus/flare/projects/LUCID/ogokdemir/adaparse_output/nougat_next_eval_2nodes
+
+# Input files are zip archives that contain PDFs.
+iszip: true
+
+# With iszip=true, each zip is processed as one Parsl task.
+chunk_size: 1
+
+# Limit volume for quick scaling validation.
+num_conversions: 120
+
+parser_settings:
+  name: "nougat"
+  batchsize: 8
+  num_workers: 1
+  prefetch_factor: 4
+  checkpoint: "/lus/flare/projects/LUCID/ogokdemir/checkpoint"
+  mmd_out: "/lus/flare/projects/LUCID/ogokdemir/adaparse_output/nougat_next_eval_2nodes/mmd"
+  recompute: true
+  fill_missing_pages: false
+  full_precision: false
+  markdown: true
+  skipping: true
+  nougat_logs_path: "/lus/flare/projects/LUCID/ogokdemir/adaparse_output/nougat_next_eval_2nodes/logs"
+
+compute_settings:
+  name: aurora
+  num_nodes: 2
+  worker_init: "export ADAPARSE_ENV_NAME=adaparse-env; export ADAPARSE_ENV_PREFIX=/lus/flare/projects/LUCID/ogokdemir/miniforge3/envs/adaparse-env; source /home/ogokdemir/AdaParse/scripts/standup_aurora.sh"
+  scheduler_options: "#PBS -l filesystems=home:flare"
+  account: ModCon
+  queue: next-eval
+  walltime: 01:00:00

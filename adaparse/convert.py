@@ -228,6 +228,18 @@ class WorkflowConfig(BaseModel):
     compute_settings: ComputeSettingsTypes
     """Compute settings (HPC platform, number of GPUs, etc)."""
 
+    def model_post_init(self, __context: Any) -> None:
+        """Normalize parser settings into a parser config object."""
+        if isinstance(self.parser_settings, dict):
+            from adaparse.parsers import _resolve_strategy
+
+            parser_name = self.parser_settings.get('name', '')
+            strategy = _resolve_strategy(parser_name)
+            if strategy is None:
+                raise ValueError(f'Unknown parser name in parser_settings: {parser_name}')
+            config_cls, _ = strategy
+            self.parser_settings = config_cls(**self.parser_settings)
+
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='PDF conversion workflow')
