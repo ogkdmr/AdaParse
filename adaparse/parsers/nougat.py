@@ -135,6 +135,8 @@ class NougatParser(BaseParser):
         # assign
         self.model = model
         self.processor = processor
+        self._inference_model = self.model
+        self._compile_attempted = False
 
         # device/dtype
         self.device = next(self.model.parameters()).device
@@ -148,6 +150,36 @@ class NougatParser(BaseParser):
             self.logger.info(f'Writing markdown files to {self.config.mmd_out}')
         else:
             self.logger.info('`mmd_out` not specified, will not write markdown files.')
+
+    def _get_inference_model(self, torch_module: Any) -> Any:
+        """Return a stable model instance for inference.
+
+        Warmstart reuses this parser instance across many chunks, so avoid
+        mutating `self.model` on repeated parse calls.
+        """
+        if self._compile_attempted:
+            return self._inference_model
+
+        self._compile_attempted = True
+        if not hasattr(torch_module, 'compile'):
+            return self._inference_model
+
+        try:
+            compiled_model = torch_module.compile(self.model, fullgraph=True)
+        except Exception as exc:
+            self.logger.warning(f'Failed to compile model, using eager mode: {exc}')
+            return self._inference_model
+
+        # Guard against invalid wrappers that break `.generate()` or `.parameters()`.
+        if not hasattr(compiled_model, 'generate') or not hasattr(compiled_model, 'parameters'):
+            self.logger.warning(
+                'Compiled model is missing required attributes; using eager mode instead.'
+            )
+            return self._inference_model
+
+        self._inference_model = compiled_model
+        self.logger.info('Compiled Nougat model once for warm parser reuse.')
+        return self._inference_model
 
     @exception_handler(default_return=None)
     def parse(self,
@@ -262,14 +294,9 @@ class NougatParser(BaseParser):
         # - - - - - - - - - - - - - - - -
         # 1st pass: pure Nougat inference
         # - - - - - - - - - - - - - - - -
+        inference_model = self._get_inference_model(torch)
         # adaptive context
-        with amp_infer_context(model=self.model):
-            # compile model
-            try:
-                self.model = torch.compile(self.model, fullgraph=True)
-            except:
-                self.logger = setup_logging('[WARNING] Failed to compile model',
-                                            self.config.nougat_logs_path)
+        with amp_infer_context(model=inference_model):
             start = time.time()
             # inference loop
             for sample, is_last_page in dataloader:
@@ -279,14 +306,15 @@ class NougatParser(BaseParser):
                                                                  dtype=self.dtype)
 
                 # decoder: generate from full model
-                decoder_output = self.model.generate(pixel_values=encoded.pixel_values,
-                                                     return_dict_in_generate=True,
-                                                     output_scores=True,
-                                                     do_sample=False,
-                                                     max_new_tokens=1024,
-                                                     bad_words_ids=[[self.processor.tokenizer.unk_token_id]],
-                                                     stopping_criteria=StoppingCriteriaList([StoppingCriteriaScores()])
-                                                     )
+                decoder_output = inference_model.generate(
+                    pixel_values=encoded.pixel_values,
+                    return_dict_in_generate=True,
+                    output_scores=True,
+                    do_sample=False,
+                    max_new_tokens=1024,
+                    bad_words_ids=[[self.processor.tokenizer.unk_token_id]],
+                    stopping_criteria=StoppingCriteriaList([StoppingCriteriaScores()]),
+                )
 
                 # post-processing
                 processed_doc_output = process_decoder_output(decoder_output=decoder_output,

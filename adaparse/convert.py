@@ -72,13 +72,40 @@ def parse_pdfs(
     with Timer('parser-parse', unique_id):
         documents = parser.parse(pdf_paths)
 
-    # FOXTROT X
-    # from functools import lru_cache
-
-    # If parsing failed, return early
+    # Recover per-PDF when a bulk parse fails to avoid dropping an entire chunk.
     if documents is None:
-        logger.info(f'Failed to parse {pdf_paths}')
-        return
+        logger.warning(
+            f'Bulk parse failed for {len(pdf_paths)} PDFs. '
+            'Attempting single-PDF recovery.'
+        )
+        recovered_documents: list[dict[str, Any]] = []
+        failed_pdfs: list[str] = []
+
+        for pdf_path in pdf_paths:
+            single_documents = parser.parse([pdf_path])
+            if not single_documents:
+                # Retry once with a fresh parser instance in case the warm parser
+                # was left in a bad state by a previous failure.
+                with Timer('initialize-parser-retry', unique_id):
+                    parser = get_parser(parser_kwargs, register=False)
+                single_documents = parser.parse([pdf_path])
+
+            if not single_documents:
+                failed_pdfs.append(pdf_path)
+                continue
+
+            recovered_documents.extend(single_documents)
+
+        documents = recovered_documents
+        if failed_pdfs:
+            sample_failed = failed_pdfs[:20]
+            logger.warning(
+                f'Single-PDF recovery still failed for {len(failed_pdfs)} PDFs: '
+                f'{sample_failed}'
+            )
+        if not documents:
+            logger.info('No documents recovered from this failed chunk.')
+            return
 
     # Write the parsed documents to a JSON lines file
     with Timer('write-jsonl', unique_id):
