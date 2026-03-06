@@ -1,6 +1,6 @@
 # 512-node production run (Nougat-only, zipped input)
 pdf_dir: /lus/flare/projects/LUCID/ogokdemir/zipped_pdfs
-out_dir: /lus/flare/projects/LUCID/ogokdemir/adaparse_output/nougat_prod_512nodes
+out_dir: /lus/flare/projects/LUCID/ogokdemir/adaparse_output/nougat_prod_128nodes
 
 iszip: true
 chunk_size: 1
@@ -10,10 +10,10 @@ num_conversions: 9223372036854775807
 
 parser_settings:
   name: "nougat"
-  batchsize: 8
+  batchsize: 10
   num_workers: 1
   prefetch_factor: 4
-  checkpoint: "/lus/flare/projects/LUCID/ogokdemir/adaparse_data/meta/nougat/checkpoint"
+  checkpoint: "/lus/flare/projects/LUCID/ogokdemir/checkpoint"
   mmd_out: "/lus/flare/projects/LUCID/ogokdemir/adaparse_output/nougat_prod_512nodes/mmd"
   recompute: false
   fill_missing_pages: false
@@ -24,9 +24,9 @@ parser_settings:
 
 compute_settings:
   name: aurora
-  num_nodes: 512
+  num_nodes: 128
   worker_init: "export ADAPARSE_ENV_NAME=adaparse-env; export ADAPARSE_ENV_PREFIX=/lus/flare/projects/LUCID/ogokdemir/miniforge3/envs/adaparse-env; source /home/ogokdemir/AdaParse/scripts/standup_aurora.sh"
   scheduler_options: "#PBS -l filesystems=home:flare"
   account: ModCon
-  queue: prod
+  queue: next-eval
   walltime: 08:00:00
